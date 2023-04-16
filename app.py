@@ -17,21 +17,21 @@ app = Flask(__name__)
 slack_app = App(token=bot_token, signing_secret=slack_signing_secret)
 handler = SlackRequestHandler(slack_app)
 
-# メッセージイベントのリスナーを設定
-@slack_app.event("app_mention")
-def command_handler(body, say):
-    text = body["event"]["text"]
+conversations = {}
 
-    # ChatGPTによる応答の生成
+def handle_conversation(thread_ts, user_message):
+    if thread_ts not in conversations:
+        conversations[thread_ts] = [{"role": "system", "content": "You are a helpful assistant."}]
+
+    conversations[thread_ts].append({"role": "user", "content": user_message})
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {openai_api_key}"
     }
     data = {
         "model": "gpt-3.5-turbo",
-        "messages": [{"role": "system", "content": "You are a helpful assistant."},
-                     {"role": "user", "content": f"{text}"}],
-        "max_tokens": 2048,
+        "messages": conversations[thread_ts],
         "n": 1,
         "stop": None,
         "temperature": 0.5,
@@ -39,9 +39,22 @@ def command_handler(body, say):
     response = requests.post(API_ENDPOINT, headers=headers, data=json.dumps(data))
     response = response.json()
 
-    # Slackに返答を送信
     reply = response["choices"][0]["message"]["content"].strip()
-    say(reply)
+    conversations[thread_ts].append({"role": "assistant", "content": reply})
+
+    return reply
+
+# メッセージイベントのリスナーを設定
+@slack_app.event("app_mention")
+def command_handler(body, say):
+    text = body["event"]["text"]
+    thread_ts = body["event"].get("thread_ts", None) or body["event"]["ts"]
+
+    # ChatGPTによる応答の生成
+    reply = handle_conversation(thread_ts, text)
+
+    # Slackに返答を送信
+    say(text=reply, thread_ts=thread_ts)
 
 # Slackイベントのエンドポイント
 @app.route("/slack/events", methods=["POST"])
