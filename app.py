@@ -21,6 +21,7 @@ handler = SlackRequestHandler(slack_app)
 @slack_app.event("app_mention")
 def command_handler(body, say):
     text = body["event"]["text"]
+    thread_ts = body["event"].get("thread_ts", None) or body["event"]["ts"]
 
     # ChatGPTによる応答の生成
     headers = {
@@ -41,7 +42,7 @@ def command_handler(body, say):
 
     # Slackに返答を送信
     reply = response["choices"][0]["message"]["content"].strip()
-    say(reply)
+    say(text=reply, thread_ts=thread_ts)
 
 # Slackイベントのエンドポイント
 @app.route("/slack/events", methods=["POST"])
