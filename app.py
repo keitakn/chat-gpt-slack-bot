@@ -1,8 +1,9 @@
 from langchain import PromptTemplate, LLMChain
 from langchain.llms import OpenAIChat
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
-
-# 環境変数にAPIキーを設定
+from flask import Flask, request
+from slack_bolt import App
+from slack_bolt.adapter.flask import SlackRequestHandler
 import os
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
@@ -31,10 +32,6 @@ def create_conversational_chain():
 
 SLACK_BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
 SLACK_SIGNING_SECRET = os.environ["SLACK_SIGNING_SECRET"]
-
-from flask import Flask, request
-from slack_bolt import App
-from slack_bolt.adapter.flask import SlackRequestHandler
 
 # Flaskアプリケーションの設定
 app = Flask(__name__)
