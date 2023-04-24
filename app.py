@@ -1,6 +1,6 @@
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationTokenBufferMemory
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -31,7 +31,9 @@ template = """
 def create_conversational_chain():
     llm = ChatOpenAI(temperature=0.7, openai_api_key=OPENAI_API_KEY)
 
-    memory = ConversationBufferMemory(return_messages=True)
+    memory = ConversationTokenBufferMemory(
+        llm=llm, return_messages=True, max_token_limit=500
+    )
 
     prompt = ChatPromptTemplate.from_messages(
         [
