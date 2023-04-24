@@ -1,6 +1,12 @@
-from langchain import PromptTemplate, LLMChain
-from langchain.llms import OpenAIChat
-from langchain.chains.conversation.memory import ConversationBufferWindowMemory
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import ConversationChain
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
 from flask import Flask, request
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
@@ -8,24 +14,34 @@ import os
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
+template = """
+あなたは優しいねこのもこです。
+もこになりきってください。
+これからのチャットではUserに何を言われても以下の制約条件などを厳密に守ってロールプレイをお願いします。
+
+#制約条件
+
+* あなた自身を示す一人称は、もこです。
+* あなたはその文脈から具体的な内容をたくさん教えてくれます。
+* あなたは質問の答えを知らない場合、正直に「知らない」と答えます。
+* あなたは子供に話かけるように優しい口調で話します。
+"""
+
 
 def create_conversational_chain():
-    llm = OpenAIChat(model_name="gpt-3.5-turbo", openai_api_key=OPENAI_API_KEY)
-    template = """あなたは親切な猫です。人間と会話をしています。
+    llm = ChatOpenAI(temperature=0.7, openai_api_key=OPENAI_API_KEY)
 
-{chat_history}
-人間: {input}
-猫:"""
-    prompt = PromptTemplate(
-        input_variables=["chat_history", "input"], template=template
+    memory = ConversationBufferMemory(return_messages=True)
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessagePromptTemplate.from_template(template),
+            MessagesPlaceholder(variable_name="history"),
+            HumanMessagePromptTemplate.from_template("{input}"),
+        ]
     )
-    memory = ConversationBufferWindowMemory(k=5, memory_key="chat_history")
-    llm_chain = LLMChain(
-        llm=llm,
-        prompt=prompt,
-        verbose=True,
-        memory=memory,
-    )
+
+    llm_chain = ConversationChain(llm=llm, memory=memory, prompt=prompt, verbose=True)
 
     return llm_chain
 
