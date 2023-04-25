@@ -1,2 +1,25 @@
 [tool.black]
-exclude = 'venv'
+exclude = '.venv'
+
+[tool.poetry]
+name = "chat-gpt-slack-bot"
+version = "0.1.0"
+description = ""
+authors = ["keitakn <keita.koga.work@gmail.com>"]
+readme = "README.md"
+packages = [{include = "chat_gpt_slack_bot"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+slack-bolt = "^1.17.2"
+langchain = "^0.0.147"
+flask = "^2.2.3"
+tiktoken = "^0.3.3"
+flake8 = "^6.0.0"
+black = "^23.3.0"
+openai = "^0.27.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
