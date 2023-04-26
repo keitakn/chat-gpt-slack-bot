@@ -11,6 +11,8 @@ from flask import Flask, request
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 import os
+import logging
+from logging import StreamHandler
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
@@ -53,6 +55,13 @@ SLACK_SIGNING_SECRET = os.environ["SLACK_SIGNING_SECRET"]
 
 # Flaskアプリケーションの設定
 app = Flask(__name__)
+
+# ログの設定
+stream_handler = StreamHandler()
+stream_handler.setLevel(logging.INFO)
+app.logger.addHandler(stream_handler)
+app.logger.setLevel(logging.INFO)
+
 slack_app = App(token=SLACK_BOT_TOKEN, signing_secret=SLACK_SIGNING_SECRET)
 slack_request_handler = SlackRequestHandler(slack_app)
 
