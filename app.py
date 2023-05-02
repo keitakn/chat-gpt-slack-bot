@@ -7,12 +7,13 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from flask import Flask, request
+from flask import Flask, request, Response
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 import os
 import logging
 from logging import StreamHandler
+import json
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
@@ -95,6 +96,30 @@ def command_handler(body, say):
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
     return slack_request_handler.handle(request)
+
+
+@app.route("/cats/<cat_id>/messages", methods=["POST"])
+def stream_response(cat_id):
+    body = request.get_json()
+
+    # TODO 正式版では cat_id 毎にねこの人格を設定する
+    app.logger.info(f"CatID: {cat_id}")
+
+    message = body["message"]
+
+    llm_response = chain.predict(input=message)
+
+    response_body = {
+        "message": llm_response,
+    }
+
+    json_body = json.dumps(response_body, ensure_ascii=False)
+
+    response = Response(
+        json_body, content_type="application/json; charset=utf-8", status=201
+    )
+
+    return response
 
 
 if __name__ == "__main__":
