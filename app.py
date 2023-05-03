@@ -7,12 +7,13 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from flask import Flask, request
+from flask import Flask, request, Response
 from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 import os
 import logging
 from logging import StreamHandler
+import json
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
@@ -81,6 +82,9 @@ slack_request_handler = SlackRequestHandler(slack_app)
 chain = create_conversational_chain()
 
 
+API_CREDENTIAL = os.environ["API_CREDENTIAL"]
+
+
 # メッセージイベントのリスナーを設定
 @slack_app.event("app_mention")
 def command_handler(body, say):
@@ -95,6 +99,70 @@ def command_handler(body, say):
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
     return slack_request_handler.handle(request)
+
+
+@app.route("/cats/<cat_id>/messages", methods=["POST"])
+def cats_messages(cat_id):
+    authorization = request.headers.get("Authorization", None)
+
+    un_authorization_response_body = {
+        "type": "UNAUTHORIZED",
+        "title": "invalid Authorization Header.",
+    }
+
+    un_authorization_json_response_body = json.dumps(
+        un_authorization_response_body, ensure_ascii=False
+    )
+
+    un_authorization_response = Response(
+        un_authorization_json_response_body,
+        content_type="application/json; charset=utf-8",
+        status=401,
+    )
+
+    if authorization is None:
+        return un_authorization_response
+
+    authorization_headers = authorization.split(" ")
+    if len(authorization_headers) != 2 or authorization_headers[0] != "Basic":
+        return un_authorization_response
+
+    if authorization_headers[1] != API_CREDENTIAL:
+        return un_authorization_response
+
+    body = request.get_json()
+
+    # TODO 正式版では cat_id 毎にねこの人格を設定する
+    app.logger.info(f"CatID: {cat_id}")
+
+    message = body["message"]
+
+    try:
+        llm_response = chain.predict(input=message)
+    except Exception as e:
+        app.logger.error(e)
+        error_message = f"An error occurred: {str(e)}"
+        response_body = {
+            "type": "INTERNAL_SERVER_ERROR",
+            "title": "an unexpected error has occurred.",
+            "detail": error_message,
+        }
+        json_body = json.dumps(response_body, ensure_ascii=False)
+        return Response(
+            json_body, content_type="application/json; charset=utf-8", status=500
+        )
+
+    response_body = {
+        "message": llm_response,
+    }
+
+    json_body = json.dumps(response_body, ensure_ascii=False)
+
+    response = Response(
+        json_body, content_type="application/json; charset=utf-8", status=201
+    )
+
+    return response
 
 
 if __name__ == "__main__":
