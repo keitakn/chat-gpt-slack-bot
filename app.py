@@ -137,7 +137,20 @@ def cats_messages(cat_id):
 
     message = body["message"]
 
-    llm_response = chain.predict(input=message)
+    try:
+        llm_response = chain.predict(input=message)
+    except Exception as e:
+        app.logger.error(e)
+        error_message = f"An error occurred: {str(e)}"
+        response_body = {
+            "type": "INTERNAL_SERVER_ERROR",
+            "title": "an unexpected error has occurred.",
+            "detail": error_message,
+        }
+        json_body = json.dumps(response_body, ensure_ascii=False)
+        return Response(
+            json_body, content_type="application/json; charset=utf-8", status=500
+        )
 
     response_body = {
         "message": llm_response,
