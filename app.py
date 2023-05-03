@@ -82,6 +82,9 @@ slack_request_handler = SlackRequestHandler(slack_app)
 chain = create_conversational_chain()
 
 
+API_CREDENTIAL = os.environ["API_CREDENTIAL"]
+
+
 # メッセージイベントのリスナーを設定
 @slack_app.event("app_mention")
 def command_handler(body, say):
@@ -99,7 +102,34 @@ def slack_events():
 
 
 @app.route("/cats/<cat_id>/messages", methods=["POST"])
-def stream_response(cat_id):
+def cats_messages(cat_id):
+    authorization = request.headers.get("Authorization", None)
+
+    un_authorization_response_body = {
+        "type": "UNAUTHORIZED",
+        "title": "invalid Authorization Header.",
+    }
+
+    un_authorization_json_response_body = json.dumps(
+        un_authorization_response_body, ensure_ascii=False
+    )
+
+    un_authorization_response = Response(
+        un_authorization_json_response_body,
+        content_type="application/json; charset=utf-8",
+        status=401,
+    )
+
+    if authorization is None:
+        return un_authorization_response
+
+    authorization_headers = authorization.split(" ")
+    if len(authorization_headers) != 2 or authorization_headers[0] != "Basic":
+        return un_authorization_response
+
+    if authorization_headers[1] != API_CREDENTIAL:
+        return un_authorization_response
+
     body = request.get_json()
 
     # TODO 正式版では cat_id 毎にねこの人格を設定する
