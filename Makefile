@@ -6,5 +6,6 @@ lint:
 format:
 	black .
 
-ci: lint
+ci:
+	poetry run flake8 .
 	poetry run black --check .
